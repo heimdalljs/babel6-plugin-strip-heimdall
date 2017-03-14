@@ -1,57 +1,68 @@
-function stripNode(node, path, removeNode) {
-  if (node.type === 'CallExpression' &&
+function shouldStripNode(node) {
+  if (node.id &&
+    node.id.type === 'Identifier' &&
+    node.id.name === 'heimdall') {
+    return true;
+  } else if (node.type === 'CallExpression' &&
     node.callee &&
     node.callee.type === 'MemberExpression' &&
     node.callee.object.name === 'heimdall') {
 
-    // strips anything like `heimdall.stop(token)`
-    // except for within switch statements
-    if (path.body && path.body.length) {
-      var index = path.body.indexOf(removeNode);
+    return true;
 
-      if (index !== -1) {
-        path.body.splice(index, 1);
-      }
-
-      // strips `heimdall.stop(token);` within switch statements
-    } else if (path.type === 'SwitchCase' && path.consequent && path.consequent.length) {
-      var index = path.consequent.indexOf(removeNode);
-
-      if (index !== -1) {
-        path.consequent.splice(index, 1);
-      }
-    } else {
-      // debugger;
-    }
-
-  // catch things like `token = heimdall.start('<id>')
+    // catch things like `token = heimdall.start('<id>')
   } else if (node.type === 'AssignmentExpression') {
     if (node.right) {
-      stripNode(node.right, path, removeNode);
+      return shouldStripNode(node.right);
+    }
+  } else if (node.type === 'VariableDeclarator') {
+    if (node.init) {
+      return shouldStripNode(node.init);
     }
   }
+
+  return false;
 }
 
 function stripHeimdall(babel) {
-  return new babel.Plugin('strip-heimdall', {
+  const { types: t } = babel;
+
+  return {
+    name: "strip-heimdall", // not required
     visitor: {
-      ExpressionStatement: function(node, path) {
+
+      ExpressionStatement: function(path) {
+        let node = path.node;
         // strip stops
-        stripNode(node.expression, path, node);
+        if (shouldStripNode(node.expression)) {
+          path.remove();
+        }
       },
 
-      VariableDeclaration: function(node, path) {
+      VariableDeclaration: function(path) {
+        let node = path.node;
         //strip `let token = heimdall.start('<id>');`
-        if (node.declarations && node.declarations.length === 1) {
-          var d = node.declarations[0];
+        if (node.declarations) {
+          if (node.declarations.length === 1) {
+            let d = node.declarations[0];
 
-          if (d.init) {
-            stripNode(d.init, path, node);
+            if (shouldStripNode(d)) {
+              path.remove();
+            }
+          } else {
+            for (let i = 0; i < node.declarations.length; i++) {
+              let d = node.declarations[i];
+              if (d.init && d.init.type === 'CallExpression') {
+                if (shouldStripNode(d)) {
+                  node.declarations.splice(i, 1);
+                }
+              }
+            }
           }
         }
       }
     }
-  });
+  };
 }
 
 stripHeimdall.baseDir = function() {
