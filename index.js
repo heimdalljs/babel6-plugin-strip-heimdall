@@ -1,3 +1,5 @@
+'use strict';
+
 function shouldStripNode(node) {
   if (node.id &&
     node.id.type === 'Identifier' &&
@@ -25,7 +27,7 @@ function shouldStripNode(node) {
 }
 
 function stripHeimdall(babel) {
-  const { types: t } = babel;
+  let t = babel.types;
 
   return {
     name: "strip-heimdall", // not required
