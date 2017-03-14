@@ -8,5 +8,10 @@
     "babel-plugin"
   ],
   "author": "Chris Thoburn",
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "babel-core": "^6.24.0",
+    "common-tags": "^1.4.0",
+    "mocha": "^3.2.0"
+  }
 }
